@@ -14,7 +14,8 @@ class CustomError(Exception):
 
 
 class UnsuccessfulResponse(CustomError):
-    message = 'Статус ответа от API отличается от ОК.'
+    message = ('HTTP-статус ответа API отличается от ОК. '
+               'Запрос не обработан.')
 
 
 class RequestFailedError(CustomError):

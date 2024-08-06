@@ -1,6 +1,7 @@
-"""Модуль содержит функции Teлеграм-бота, поверяющего
+"""
+Модуль содержит функции Teлеграм-бота, поверяющего
 статус домашней работы с использованием API Практикум.Домашка,
-а также основной цикл работы бота
+а также основной цикл работы бота.
 """
 
 import logging
@@ -63,7 +64,8 @@ def send_message(bot, message):
 
 
 def get_api_answer(timestamp):
-    """Сделает запрос к API Практикум.Домашка.
+    """
+    Сделает запрос к API Практикум.Домашка.
     В случе успеха вернет ответ API в виде словаря.
     """
     if not isinstance(timestamp, int):
@@ -87,12 +89,13 @@ def get_api_answer(timestamp):
 
 
 def check_response(response):
-    """Проверит ответ API Практикум.Домашка в виде словаря
+    """
+    Проверит ответ API Практикум.Домашка в виде словаря
     на соответствие ожидаемому формату и в случае успеха вернет
     этот словарь.
     """
-    expected_keys = ['current_date', 'homeworks',]
-    keys_for_list = ['homeworks',]
+    expected_keys = ['current_date', 'homeworks', ]
+    keys_for_list = ['homeworks', ]
 
     if not isinstance(response, dict):
         raise TypeError(f'Неожиданный тип входных данных функции '
@@ -107,7 +110,8 @@ def check_response(response):
 
 
 def parse_status(homework):
-    """Проверит предоставленные данные о домашней работе
+    """
+    Проверит предоставленные данные о домашней работе
     и в случае соответствия данных ожидаемому формату
     вернет строку с иформацией о статусе данной работы.
     """
@@ -130,8 +134,8 @@ def parse_status(homework):
 
 def main():
     """Создаст бота - объект класса Telebot
-    и запустит основной цикл его работы."""
-
+    и запустит основной цикл его работы.
+    """
     bot = TeleBot(token=TELEGRAM_TOKEN)
     timestamp = int(time.time())
     last_message = None

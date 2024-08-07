@@ -1,4 +1,5 @@
 import logging
+import logging.handlers
 import os
 import requests
 import sys
@@ -7,15 +8,20 @@ import time
 from dotenv import load_dotenv
 from http import HTTPStatus
 from telebot import TeleBot
+import telebot
 
 import exceptions
-
+#  поправить импорты
 
 load_dotenv()
 
 PRACTICUM_TOKEN = os.getenv('PRACTICUM_TOKEN')
+# PRACTICUM_TOKEN = 1
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
+# TELEGRAM_TOKEN = 1
+# TELEGRAM_CHAT_ID = 1
 TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
+
 
 RETRY_PERIOD = 600
 ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
@@ -28,53 +34,86 @@ HOMEWORK_VERDICTS = {
 }
 
 LOG_FORMAT = ('%(asctime)s - %(name)s - [%(levelname)s] - '
-              '%(filename)s: %(lineno)s - %(message)s')
+              '%(filename)s: %(funcName)s: %(lineno)s - %(message)s')
 
+
+CHECK_TOKENS_ERROR = 'Не обнаружены переменные окружения: {not_found_vars}'
+FAILED_SENDING = 'Сбой при отправке сообщения: "{message}".'
+SUCCESSFUL_SENDING = 'Успешная отправка сообщения: "{message}".'
+HTTP_REQUEST_ERROR = (
+    'Ошибка при выполнении HTTP-запроса: {error}.\n'
+    'Параметры запроса:\n'
+    '    url: {url},\n'
+    '    headers: {headers},\n'
+    '    params: {params}.'
+)
+
+
+# переместить в main
+# может сделать настройку логирования через словарь
 logging.basicConfig(
     format=LOG_FORMAT,
     level=logging.DEBUG,
-    handlers=[logging.StreamHandler(stream=sys.stdout)],
+    handlers=[
+        logging.StreamHandler(stream=sys.stdout),
+        logging.handlers.RotatingFileHandler(
+            filename=__file__ + '.log',
+            maxBytes=10_000_000,
+            backupCount=5)
+    ],
 )
 logger = logging.getLogger(__name__)
 
 
 def check_tokens():
     """Проверит наличие требуемых переменных окружения."""
-    required_constants = [PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID]
-    for constant in required_constants:
-        if constant is None:
-            return False
-    return True
+    required_variables = {
+        'PRACTICUM_TOKEN': PRACTICUM_TOKEN,
+        'TELEGRAM_TOKEN': TELEGRAM_TOKEN,
+        'TELEGRAM_CHAT_ID': TELEGRAM_CHAT_ID,
+    }
+    not_found_vars = []
+    for var_name in required_variables.keys():
+        if required_variables[var_name] is None:
+            not_found_vars.append(var_name)
+    if not_found_vars:
+        message = CHECK_TOKENS_ERROR.format(not_found_vars=not_found_vars)
+        logger.critical(message)
+        raise ValueError(message)
 
 
 def send_message(bot, message):
     """Отправит сообщение "message" в Телеграм."""
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
-    except Exception as error:
-        logger.error(f'Сбой при отправке сообщения. {error}')
-    else:
-        logger.debug(f'Успешная отправка сообщения: "{message}"')
+        logger.debug(SUCCESSFUL_SENDING.format(message=message))
+        return True
+    except Exception:
+        logger.exception(FAILED_SENDING.format(message=message))
 
 
 def get_api_answer(timestamp):
     """Сделает запрос к API Практикум.Домашка.
     В случе успеха вернет ответ API в виде словаря.
     """
-    if not isinstance(timestamp, int):
-        raise TypeError(f'Неожиданный тип входных данных функции '
-                        f'get_api_answer(): {type(timestamp)}')
     try:
         response = requests.get(
-            ENDPOINT,
+            url=ENDPOINT,
             headers=HEADERS,
             params={'from_date': timestamp}
         )
-    except Exception as error:
-        logger.error(f'Ошибка выполнения HTTP-запроса к API: {error}')
-        return
+    except requests.RequestException as error:
+        raise exceptions.HttpRequestError(
+            HTTP_REQUEST_ERROR.format(
+                error=error,
+                headers=HEADERS,
+                params={'from_date': timestamp}
+            )
+        )
+    # нужно тестировать, дописывать, в данной ошибке пересылать параметры запроса, может параметры есть в error
+    # отказы сервера
     if response.status_code != HTTPStatus.OK:
-        raise exceptions.UnsuccessfulResponse(
+        raise exceptions.UnsuccessfulResponseError(
             f'HTTP-статус ответа API отличается от ОК: '
             f'Status-code {response.status_code}'
         )
@@ -125,15 +164,15 @@ def parse_status(homework):
 
 def main():
     """Основной цикл работы бота."""
+    check_tokens()
     bot = TeleBot(token=TELEGRAM_TOKEN)
-    timestamp = int(time.time())
+    # timestamp = int(time.time())
+    timestamp = 0
     last_message = None
+    # print(send_message(bot, 'Проверка связи'))
+    print(HTTP_REQUEST_ERROR)
 
     while True:
-        if not check_tokens():
-            logger.critical('Обязательная переменная окружения не обнаружена.'
-                            'Бот остановлен. ')
-            break
         try:
             response_data = check_response(get_api_answer(timestamp))
             if not response_data['homeworks']:

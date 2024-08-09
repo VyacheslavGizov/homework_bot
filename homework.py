@@ -137,9 +137,9 @@ def check_response(response):
     homeworks = response['homeworks']
     if not isinstance(homeworks, list):
         raise TypeError(WRONG_DATA_TYPE.format(
-                data_type=type(homeworks),
-                key='homeworks'
-            ))
+            data_type=type(homeworks),
+            key='homeworks'
+        ))
     return response
 
 
@@ -158,7 +158,7 @@ def parse_status(homework):
     return HOMEWORK_STATUS_IS_CHANGED.format(
         homework_name=homework['homework_name'],
         verdict=HOMEWORK_VERDICTS[status]
-        )
+    )
 
 
 def main():
